@@ -1,51 +1,49 @@
 import { Injectable } from '@nestjs/common';
 import Jimp from 'jimp';
-import sharp from 'sharp';
-import axios from 'axios';
 
 @Injectable()
 export class AppService {
-  async main(fileUrl) {
-    function getDitherValue(colors, variance) {
-      const MAX_DITHER = 400;
-      const maxDither = MAX_DITHER / Math.ceil(colors / 2);
-      console.log(colors, (maxDither / 10) * variance);
-      return (maxDither / 10) * variance;
-    }
 
-    function numberInBetween(number, min, max) {
-      number = Math.max(min, number);
-      return Math.min(max, number);
-    }
+  async main(fileUrl: string, paletteSize: number, variance: number) {
+
+    paletteSize = numberInBetween(paletteSize, 1, 16);
+    variance = numberInBetween(variance, 0, 10);
 
     const start = performance.now();
 
     const image = await Jimp.read(fileUrl);
-
     image.resize(200, 200);
-
     const rgbArray = this.buildRgb(image.bitmap.data);
 
-    const k = numberInBetween(4, 1, 16);
-    const variance = numberInBetween(5, 0, 10);
     const kMeans = this.kMeansClusteringWithDithering(
       rgbArray,
-      k,
-      getDitherValue(k, variance),
+      paletteSize,
+      getDitherValue(paletteSize, variance),
     );
 
-    const rgbPallete = kMeans.centroids;
-    const hexPallete = this.convertRGBToHEX(rgbPallete);
-    const hslPallete = this.convertRGBtoHSL(rgbPallete);
-
-    console.log(hexPallete);
-    console.log(hslPallete);
-
-    // await clipboard.writeSync(JSON.stringify(rgbPallete));
+    const rgb = kMeans.centroids;
+    const hex = this.convertRGBToHEX(rgb);
+    const hsl = this.convertRGBtoHSL(rgb);
+    console.log(JSON.stringify(rgb));
 
     console.log(performance.now() - start);
 
-    return rgbPallete;
+    return {
+      rgb, hex, hsl
+    };
+
+    function getDitherValue(colors, variance) {
+      const MAX_DITHER = 400;
+      const maxDither = MAX_DITHER / Math.ceil(colors / 2);
+      return (maxDither / 10) * variance;
+    }
+
+    function numberInBetween(number, min, max) {
+      number = parseInt(number);
+      if (isNaN(number)) return min;
+      number = Math.max(min, number);
+      return Math.min(max, number);
+    }
   }
 
   convertRGBToHEX(rgbArray) {
@@ -64,11 +62,6 @@ export class AppService {
     });
   }
 
-  /**
-   * Convert RGB values to HSL
-   * This formula can be
-   * found here https://www.niwa.nu/2013/05/math-behind-colorspace-conversions-rgb-hsl/
-   */
   convertRGBtoHSL(rgbValues) {
     return rgbValues.map(({ r, g, b }) => {
       (r /= 255), (g /= 255), (b /= 255);
@@ -119,16 +112,11 @@ export class AppService {
     }));
 
     return { centroids: roundedCentroids, clusters };
-
-    function areColorsEqual(c1, c2) {
-      return c1.r === c2.r && c1.g === c2.g && c1.b === c2.b;
-    }
   }
 
   buildRgb(imageData) {
     const rgbValues = [];
-    // note that we are loopin every 4!
-    // for every Red, Green, Blue and Alpha
+
     for (let i = 0; i < imageData.length; i += 4) {
       const rgb = {
         r: imageData[i],
@@ -143,34 +131,6 @@ export class AppService {
   }
 
   kMeansClustering(colors, k) {
-    // Initialize centroids using k-means++
-    // let centroids = [];
-    // centroids.push(colors[Math.floor(Math.random() * colors.length)]);
-    // while (centroids.length < k) {
-    //     let distances = Array.from({ length: colors.length }, () => Infinity);
-    //     for (let i = 0; i < colors.length; i++) {
-    //         for (const centroid of centroids) {
-    //             const dist = Math.sqrt(
-    //                 (colors[i].r - centroid.r) ** 2 +
-    //                 (colors[i].g - centroid.g) ** 2 +
-    //                 (colors[i].b - centroid.b) ** 2
-    //             );
-    //             distances[i] = Math.min(distances[i], dist);
-    //         }
-    //     }
-    //     const sumDistances = distances.reduce((acc, val) => acc + val);
-    //     const probabilities = distances.map(d => d / sumDistances);
-    //     let cumulativeProbability = 0;
-    //     const rand = Math.random();
-    //     for (let i = 0; i < probabilities.length; i++) {
-    //         cumulativeProbability += probabilities[i];
-    //         if (cumulativeProbability >= rand) {
-    //             centroids.push(colors[i]);
-    //             break;
-    //         }
-    //     }
-    // }
-
     // Initialize centroids randomly
     const centroids = [];
     for (let i = 0; i < k; i++) {
