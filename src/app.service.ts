@@ -9,8 +9,6 @@ export class AppService {
     paletteSize = numberInBetween(paletteSize, 1, 16);
     variance = numberInBetween(variance, 0, 10);
 
-    const start = performance.now();
-
     const image = await Jimp.read(fileUrl);
     image.resize(200, 200);
     const rgbArray = this.buildRgb(image.bitmap.data);
@@ -25,8 +23,6 @@ export class AppService {
     const hex = this.convertRGBToHEX(rgb);
     const hsl = this.convertRGBtoHSL(rgb);
     console.log(JSON.stringify(rgb));
-
-    console.log(performance.now() - start);
 
     return {
       rgb, hex, hsl
