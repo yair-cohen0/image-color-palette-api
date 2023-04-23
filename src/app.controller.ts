@@ -23,6 +23,7 @@ export class AppController {
     dest: "./images"
   }))
   async imageByFile(@UploadedFile() image: Express.Multer.File, @Body('size') paletteSize, @Body('variance') variance) {
+    if (!image?.path) return "No image Passed";
     const palettes = await this.appService.main(image.path, paletteSize, variance);
     await fs.unlinkSync(image.path);
     return palettes;
