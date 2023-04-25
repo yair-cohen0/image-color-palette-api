@@ -4,10 +4,10 @@ import Jimp from 'jimp';
 @Injectable()
 export class AppService {
 
-  async main(fileUrl: string, paletteSize: number, variance: number) {
+  async main(fileUrl: string, paletteSize: string | number, variance: string | number) {
 
-    paletteSize = numberInBetween(paletteSize, 1, 16);
-    variance = numberInBetween(variance, 0, 10);
+    const paletteSizeParsed = numberInBetween(+paletteSize, 1, 16, 4);
+    const varianceParsed = numberInBetween(+variance, 0, 10, 5);
 
     const image = await Jimp.read(fileUrl);
     image.resize(200, 200);
@@ -15,8 +15,8 @@ export class AppService {
 
     const kMeans = this.kMeansClusteringWithDithering(
       rgbArray,
-      paletteSize,
-      getDitherValue(paletteSize, variance),
+      paletteSizeParsed,
+      getDitherValue(paletteSizeParsed, varianceParsed),
     );
 
     const rgb = kMeans.centroids;
@@ -34,11 +34,10 @@ export class AppService {
       return (maxDither / 10) * variance;
     }
 
-    function numberInBetween(number, min, max) {
-      number = parseInt(number);
-      if (isNaN(number)) return min;
-      number = Math.max(min, number);
-      return Math.min(max, number);
+    function numberInBetween(number: number, min: number, max: number, def: number = undefined): number {
+      if (isNaN(number)) return def ?? min;
+      const temp = Math.max(min, number);
+      return Math.min(max, temp);
     }
   }
 
